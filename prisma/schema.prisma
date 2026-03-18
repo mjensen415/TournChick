@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id       String  @id @default(cuid())
+  name     String
+  seed     Int     // 1-16
+  region   String
+  imageUrl String?
+
+  matchesAsTeam1 Match[] @relation("Team1")
+  matchesAsTeam2 Match[] @relation("Team2")
+  matchesWon     Match[] @relation("Winner")
+  votes          Vote[]
+}
+
+model Match {
+  id        String  @id @default(cuid())
+  round     Int     // 1 to 6 (64, 32, 16, 8, 4, 2)
+  position  Int     // Position within the round's bracket
+
+  team1Id   String?
+  team1     Team?   @relation("Team1", fields: [team1Id], references: [id])
+  
+  team2Id   String?
+  team2     Team?   @relation("Team2", fields: [team2Id], references: [id])
+
+  winnerId  String?
+  winner    Team?   @relation("Winner", fields: [winnerId], references: [id])
+
+  isOpen    Boolean @default(false)
+  
+  votes     Vote[]
+
+  @@unique([round, position])
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id])
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  sessionId String   // Browser fingerprint or session cookie
+  createdAt DateTime @default(now())
+
+  @@unique([matchId, sessionId]) // One vote per match per session
+}
+
+model Settings {
+  id                 String  @id @default("global")
+  adminPasswordHash  String
+  globalPollingOpen  Boolean @default(false)
+}
